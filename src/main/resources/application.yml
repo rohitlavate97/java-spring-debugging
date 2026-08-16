@@ -82,6 +82,9 @@ management:
         http.server.requests: true
 
 logging:
+  structured:
+    format:
+      console: ecs
   pattern:
     level: "%5p [${spring.application.name:},%X{correlation_id:-},%X{request_id:-}]"
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [${spring.application.name:},%X{correlation_id:-},%X{request_id:-}] [%t] %-40.40logger{39} : %m%n"
