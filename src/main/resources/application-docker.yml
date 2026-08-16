@@ -1,0 +1,5 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:eopis_db}
+    username: ${DB_USER:eopis_user}
+    password: ${DB_PASSWORD:eopis_password}
