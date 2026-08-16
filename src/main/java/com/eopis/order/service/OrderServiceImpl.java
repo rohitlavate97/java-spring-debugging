@@ -32,17 +32,20 @@ public class OrderServiceImpl implements OrderService {
     private final ProductRepository productRepository;
     private final OrderPricingService pricingService;
     private final InventoryService inventoryService;
+    private final OrderEventPublisher eventPublisher;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             CustomerRepository customerRepository,
                             ProductRepository productRepository,
                             OrderPricingService pricingService,
-                            InventoryService inventoryService) {
+                            InventoryService inventoryService,
+                            OrderEventPublisher eventPublisher) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
         this.productRepository = productRepository;
         this.pricingService = pricingService;
         this.inventoryService = inventoryService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -84,6 +87,15 @@ public class OrderServiceImpl implements OrderService {
 
         // Reserve inventory in the same transaction
         inventoryService.reserveStockForOrder(savedOrder);
+
+        // Publish OrderCreated event
+        eventPublisher.publishOrderCreated(new com.eopis.order.event.OrderCreatedEvent(
+                savedOrder.getId(),
+                savedOrder.getOrderNumber(),
+                customer.getId(),
+                customer.getCustomerNumber(),
+                savedOrder.getTotalAmount()
+        ));
 
         return OrderResponse.fromEntity(savedOrder);
     }
