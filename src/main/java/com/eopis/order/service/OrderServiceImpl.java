@@ -33,19 +33,22 @@ public class OrderServiceImpl implements OrderService {
     private final OrderPricingService pricingService;
     private final InventoryService inventoryService;
     private final OrderEventPublisher eventPublisher;
+    private final com.eopis.common.metrics.EopisMetricsService metricsService;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             CustomerRepository customerRepository,
                             ProductRepository productRepository,
                             OrderPricingService pricingService,
                             InventoryService inventoryService,
-                            OrderEventPublisher eventPublisher) {
+                            OrderEventPublisher eventPublisher,
+                            com.eopis.common.metrics.EopisMetricsService metricsService) {
         this.orderRepository = orderRepository;
         this.customerRepository = customerRepository;
         this.productRepository = productRepository;
         this.pricingService = pricingService;
         this.inventoryService = inventoryService;
         this.eventPublisher = eventPublisher;
+        this.metricsService = metricsService;
     }
 
     @Override
@@ -86,7 +89,11 @@ public class OrderServiceImpl implements OrderService {
         log.info("Order saved with ID: {}, Order Number: {}", savedOrder.getId(), savedOrder.getOrderNumber());
 
         // Reserve inventory in the same transaction
-        inventoryService.reserveStockForOrder(savedOrder);
+        List<com.eopis.inventory.entity.InventoryReservation> reservations = inventoryService.reserveStockForOrder(savedOrder);
+
+        // Record custom metrics
+        metricsService.incrementOrdersPlaced();
+        metricsService.incrementInventoryReservations(reservations.size());
 
         // Publish OrderCreated event
         eventPublisher.publishOrderCreated(new com.eopis.order.event.OrderCreatedEvent(
