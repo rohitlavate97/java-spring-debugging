@@ -1,0 +1,14 @@
+# Chaos Engineering Profile for Production Incident Simulation (Phase 10)
+eopis:
+  chaos:
+    enabled: true
+    faults:
+      payment-intermittent-failure:
+        enabled: true
+        failure-rate-percent: 1.5
+      inventory-lock-contention:
+        enabled: true
+        latency-ms: 350
+      order-placement-slowdown:
+        enabled: false
+        latency-ms: 500
