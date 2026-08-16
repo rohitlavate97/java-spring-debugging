@@ -1,4 +1,6 @@
 spring:
+  cache:
+    type: simple
   datasource:
     url: jdbc:h2:mem:eopis_test_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
     username: sa
@@ -12,6 +14,9 @@ spring:
     enabled: false
 
 management:
+  health:
+    redis:
+      enabled: false
   endpoint:
     health:
       show-details: always
