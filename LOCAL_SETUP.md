@@ -1,89 +1,132 @@
-# EOPIS — Local Environment Setup Guide
+# EOPIS Local Environment & Debugging Setup Guide
 
-This guide provides step-by-step instructions for setting up and running the **Enterprise Order, Payment & Inventory System (EOPIS)** debugging laboratory on your local machine using **IntelliJ IDEA**, **Docker**, and **Java 21+**.
+[![Environment: Production-Parity](https://img.shields.io/badge/Environment-Docker%20Compose%20Ready-blue.svg)](#system-requirements--prerequisites)
+[![Java 21+](https://img.shields.io/badge/Java-21%2B%20LTS-orange.svg)](https://adoptium.net/)
+[![IDE: IntelliJ IDEA](https://img.shields.io/badge/IDE-IntelliJ%20IDEA%202024.1%2B-brightgreen.svg)](https://www.jetbrains.com/idea/)
+[![Remote Debug: Port 5005](https://img.shields.io/badge/JDWP%20Debug-Port%205005-purple.svg)](#5-setting-up-intellij-idea-remote-debugger-port-5005)
+
+This guide provides step-by-step instructions for establishing the **Enterprise Order, Payment & Inventory System (EOPIS)** debugging laboratory on your local machine using **IntelliJ IDEA**, **Docker**, and **Java 21+**.
+
+> **Navigation**: [Home](README.md) / **Local Setup Guide** / [Architecture](docs/ARCHITECTURE.md) / [System State](docs/STATE.md) / [Audit Report](audit.md) / [Bug Logs](docs/bugs/BUG-001-immutable-bigdecimal-subtotal.md)
+
+---
+
+## Table of Contents
+
+- [1. System Requirements & Prerequisites](#1-system-requirements--prerequisites)
+- [2. Clone the Repository](#2-clone-the-repository)
+- [3. Opening and Configuring IntelliJ IDEA](#3-opening-and-configuring-intellij-idea)
+- [4. Running the Application](#4-running-the-application)
+  - [Mode A: Full Containerized Stack (Recommended)](#mode-a-full-containerized-stack-recommended)
+  - [Mode B: Hybrid Local Development](#mode-b-hybrid-local-development)
+- [5. Setting Up IntelliJ IDEA Remote Debugger (Port 5005)](#5-setting-up-intellij-idea-remote-debugger-port-5005)
+- [6. Accessing Services & Observability Dashboards](#6-accessing-services--observability-dashboards)
+- [7. Connecting pgAdmin 4 to PostgreSQL](#7-connecting-pgadmin-4-to-postgresql)
+- [8. Running the Automated Test Suite](#8-running-the-automated-test-suite)
+- [9. Troubleshooting & FAQ](#9-troubleshooting--faq)
 
 ---
 
 ## 1. System Requirements & Prerequisites
 
-Ensure the following tools are installed before starting:
+Verify that the following tools are installed on your workstation:
 
-| Tool | Recommended Version | Verification Command | Installation Link |
+| Tool | Recommended Version | Verification Command | Official Installation Link |
 | :--- | :--- | :--- | :--- |
 | **Java JDK** | OpenJDK 21 LTS or newer | `java -version` | [Eclipse Adoptium Temurin](https://adoptium.net/) |
 | **Git** | 2.40+ | `git --version` | [Git SCM](https://git-scm.com/) |
-| **Docker Desktop** | 4.25+ (with Compose v2) | `docker compose version` | [Docker Desktop](https://www.docker.com/products/docker-desktop/) |
-| **IntelliJ IDEA** | 2024.1+ (Community or Ultimate)| — | [JetBrains IntelliJ IDEA](https://www.jetbrains.com/idea/) |
+| **Docker Desktop** / **OrbStack** | 4.25+ (with Compose v2) | `docker compose version` | [Docker Desktop](https://www.docker.com/products/docker-desktop/) |
+| **IntelliJ IDEA** | 2024.1+ (Community or Ultimate) | — | [JetBrains IntelliJ IDEA](https://www.jetbrains.com/idea/) |
 
-> **Windows Tip**: On Windows 10/11, ensure Docker Desktop is configured to use the **WSL 2 backend** (Settings → General → Use the WSL 2 based engine).
+> [!TIP]
+> **Windows Tip**: On Windows 10/11, ensure Docker Desktop is configured to use the **WSL 2 backend** (**Settings → General → Use the WSL 2 based engine**).
+
+> [!NOTE]
+> **Multiple Java Versions**: If your default system JDK is older than Java 21 (e.g. Java 17), explicitly configure `JAVA_HOME` before running Maven commands:
+> - **macOS / Linux**: `export JAVA_HOME=$(/usr/libexec/java_home -v 21)` (or point to your JDK 21+ installation directory).
+> - **Windows**: `$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.x-hotspot"`
 
 ---
 
 ## 2. Clone the Repository
 
-```powershell
-# Clone the project repository
-git clone https://github.com/rohitlavate97/java-spring-debugging.git
+Clone the project repository to your local development drive:
 
-# Navigate into the project root directory
+```bash
+# macOS / Linux (Terminal)
+git clone https://github.com/rohitlavate97/java-spring-debugging.git
+cd java-spring-debugging
+```
+
+```powershell
+# Windows (PowerShell)
+git clone https://github.com/rohitlavate97/java-spring-debugging.git
 cd java-spring-debugging
 ```
 
 ---
 
-## 3. Opening the Project in IntelliJ IDEA
+## 3. Opening and Configuring IntelliJ IDEA
 
 1. Launch **IntelliJ IDEA**.
-2. Click **Open** (or **File → Open...**) and select the `java-spring-debugging` root folder (or choose `pom.xml`).
-3. Click **Open as Project**.
-4. Configure Project SDK:
-   - Go to **File → Project Structure... → Project** (or press `Ctrl+Alt+Shift+S`).
-   - Set **SDK** to **Java 21** (or Java 25).
+2. Click **Open** (or **File → Open...**) and select the `java-spring-debugging` project root folder (or choose `pom.xml`).
+3. Select **Open as Project**.
+4. Configure the Project SDK:
+   - Navigate to **File → Project Structure... → Project** (or press `Ctrl+Alt+Shift+S` / `Cmd+;`).
+   - Set **SDK** to **Java 21** (or Java 24/25).
    - Set **Language Level** to **21 - Sealed types, pattern matching, record patterns**.
    - Click **Apply** and **OK**.
-5. Allow IntelliJ to finish indexing and downloading Maven dependencies.
+5. Enable Annotation Processing:
+   - Navigate to **Settings / Preferences → Build, Execution, Deployment → Compiler → Annotation Processors**.
+   - Ensure **Enable annotation processing** is checked.
+6. Allow IntelliJ to complete Maven indexing and dependency resolution.
 
 ---
 
 ## 4. Running the Application
 
-You can run the laboratory in either of two modes:
+You can execute the laboratory in either of two modes:
 
-### Mode A: Full Containerized Stack (Recommended for Production Parity)
+### Mode A: Full Containerized Stack (Recommended)
 
-This mode starts the application alongside PostgreSQL, Redis, Kafka, Kafka UI, Prometheus, Grafana, and pgAdmin in Docker. The application container exposes port `5005` for remote debugging.
+This mode runs the entire production topology inside Docker. The application container automatically exposes port `5005` for remote JDWP debugging.
 
-```powershell
-# Start all containers in the background
+```bash
+# 1. Start all container services in background
 docker compose up -d
 
-# Verify that all containers are healthy
+# 2. Verify all containers are healthy
 docker compose ps
 
-# Follow application logs in real-time
+# 3. Follow live structured JSON application logs
 docker compose logs -f eopis-app
 ```
 
-To stop the containers:
-```powershell
+To gracefully terminate the containers:
+
+```bash
 docker compose down
 ```
 
 ---
 
-### Mode B: Hybrid Local Development (App on Host, Dependencies in Docker)
+### Mode B: Hybrid Local Development
 
-If you prefer running Spring Boot directly inside IntelliJ while running databases and brokers in Docker:
+If you prefer running Spring Boot directly inside IntelliJ while executing databases and brokers in Docker:
 
-1. **Start only infrastructure containers:**
-   ```powershell
+1. **Start infrastructure containers only**:
+   ```bash
    docker compose up -d postgres redis kafka
    ```
 
-2. **Run Spring Boot locally:**
-   - In IntelliJ, open [`src/main/java/com/eopis/EopisApplication.java`](file:///D:/Projects/Spring%20Boot/java-spring-debugging/src/main/java/com/eopis/EopisApplication.java) and click the green **Run** or **Debug** button.
-   - Or via terminal:
-     ```powershell
+2. **Run Spring Boot locally**:
+   - In IntelliJ IDEA, navigate to [`src/main/java/com/eopis/EopisApplication.java`](src/main/java/com/eopis/EopisApplication.java) and click the green **Run** or **Debug** icon.
+   - Alternatively, execute via terminal:
+     ```bash
+     # macOS / Linux
+     ./mvnw spring-boot:run
+
+     # Windows (PowerShell)
      .\mvnw.cmd spring-boot:run
      ```
 
@@ -91,88 +134,130 @@ If you prefer running Spring Boot directly inside IntelliJ while running databas
 
 ## 5. Setting Up IntelliJ IDEA Remote Debugger (Port 5005)
 
-When running under **Mode A (Docker Compose)**, connect IntelliJ to the live container:
+When executing under **Mode A (Docker Compose)**, attach IntelliJ's interactive debugger to the live container:
 
-1. In IntelliJ IDEA, go to **Run → Edit Configurations...**
-2. Click **+ (Add New Configuration)** and choose **Remote JVM Debug**.
-3. Configure the settings:
+1. In IntelliJ IDEA, open the menu: **Run → Edit Configurations...**
+2. Click **+ (Add New Configuration)** and select **Remote JVM Debug**.
+3. Fill in the configuration details:
    - **Name**: `EOPIS Docker Container (Port 5005)`
    - **Debugger mode**: `Attach to remote JVM`
    - **Host**: `localhost`
    - **Port**: `5005`
    - **Use module classpath**: `eopis-app`
 4. Click **Apply** and **OK**.
-5. Start debugging by pressing **Debug** (or `Shift+F9`).
-6. IntelliJ will output: `Connected to the target VM, address: 'localhost:5005', transport: 'socket'`.
+5. Initiate the debug session:
+   - Click **Debug** (or press `Shift+F9`).
+   - The IntelliJ Debug Console will print:
+     ```text
+     Connected to the target VM, address: 'localhost:5005', transport: 'socket'
+     ```
+
+> [!IMPORTANT]
+> The Docker container starts with `-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005`. This allows live debugging without blocking application startup.
 
 ---
 
-## 6. Accessing Services & Dashboards
+## 6. Accessing Services & Observability Dashboards
 
-| Service | URL / Port | Credentials / Purpose |
+Once all containers are running, the following services are available:
+
+| Service | Host URL / Port | Credentials / Purpose |
 | :--- | :--- | :--- |
-| **EOPIS REST API** | `http://localhost:8080` | Main application endpoint |
-| **Actuator Health** | `http://localhost:8080/actuator/health` | Application & dependency healthcheck |
-| **Chaos Toggles** | `http://localhost:8080/actuator/chaos` | View active runtime chaos fault injection flags |
-| **pgAdmin 4** | `http://localhost:5050` | `admin@eopis.local` / `admin` (Database UI) |
-| **Kafka UI** | `http://localhost:8085` | Live topic viewer and consumer lag inspector |
-| **Prometheus** | `http://localhost:9090` | Scrapes JVM, HikariCP, and custom metrics every 5s |
-| **Grafana** | `http://localhost:3000` | `admin` / `admin` (Pre-configured EOPIS dashboards) |
+| **EOPIS REST API** | `http://localhost:8080` | Main application API and Swagger/OpenAPI |
+| **Actuator Health** | `http://localhost:8080/actuator/health` | Application & dependency liveness/readiness probes |
+| **Chaos Fault Toggles** | `http://localhost:8080/actuator/chaos` | View and verify active runtime chaos fault flags |
+| **Prometheus Metrics** | `http://localhost:8080/actuator/prometheus`| Raw Prometheus metrics endpoint |
+| **pgAdmin 4** | `http://localhost:5050` | `admin@eopis.local` / `admin` (PostgreSQL Database UI) |
+| **Kafka UI** | `http://localhost:8085` | Live topic browser, event payload viewer & consumer lag |
+| **Prometheus Server** | `http://localhost:9090` | Telemetry scraping engine (5-second scrape interval) |
+| **Grafana Dashboards** | `http://localhost:3000` | `admin` / `admin` (Pre-configured JVM, HikariCP, HTTP dashboards) |
 
 ---
 
 ## 7. Connecting pgAdmin 4 to PostgreSQL
 
-1. Open `http://localhost:5050` in your browser.
-2. Log in with:
+1. Open your browser and navigate to `http://localhost:5050`.
+2. Authenticate using:
    - **Email**: `admin@eopis.local`
    - **Password**: `admin`
-3. Click **Add New Server**:
-   - **General Tab → Name**: `eopis-postgres`
+3. In the left tree, right-click **Servers → Register → Server...**:
+   - **General Tab**:
+     - **Name**: `eopis-postgres`
    - **Connection Tab**:
-     - **Host name/address**: `postgres` (if using Docker network) or `localhost` / `host.docker.internal`
+     - **Host name/address**: `postgres` (when pgAdmin runs within the Docker network) or `localhost` / `host.docker.internal`
      - **Port**: `5432`
      - **Maintenance database**: `eopis_db`
      - **Username**: `eopis_user`
      - **Password**: `eopis_password`
-4. Click **Save**. You can now browse tables, indexes, and active transactions.
+4. Click **Save**. You can now inspect tables, active connection pools, locks, and run `EXPLAIN ANALYZE` on SQL queries.
 
 ---
 
-## 8. Running Automated Tests
+## 8. Running the Automated Test Suite
 
-Run the full 17-test integration suite:
+Execute the full 24-test integration suite:
 
-```powershell
-# Run all unit and integration tests via Maven Wrapper
+```bash
+# macOS / Linux (Terminal)
+./mvnw clean test
+
+# Windows (PowerShell)
 .\mvnw.cmd clean test
 ```
 
-Run a specific test class:
-```powershell
+### Running a Specific Test Class
+
+```bash
+# macOS / Linux
+./mvnw test -Dtest=OrderServiceIntegrationTest
+
+# Windows (PowerShell)
 .\mvnw.cmd test -Dtest=OrderServiceIntegrationTest
+```
+
+### Running the Testcontainers Postgres Migration Verification
+
+```bash
+./mvnw test -Dtest=FlywayPostgresMigrationIntegrationTest
 ```
 
 ---
 
 ## 9. Troubleshooting & FAQ
 
-### Port Already in Use (e.g. 5432 or 8080)
-If you already have a local PostgreSQL or Tomcat service running:
-```powershell
-# Check which process is using the port (e.g., 5432)
-netstat -ano | findstr :5432
+### Port Conflict (e.g. 5432, 8080, or 6379 already bound)
 
-# Or change the host port mapping in docker-compose.yml (e.g. "5433:5432")
+If an existing PostgreSQL instance, web server, or Redis process occupies a port:
+
+```bash
+# macOS / Linux: Identify process using port 5432
+lsof -i :5432
+kill -9 <PID>
+
+# Windows: Identify process using port 5432
+netstat -ano | findstr :5432
+taskkill /PID <PID> /F
 ```
 
-### Remote Debugger Fails with "Connection Refused"
-- Ensure `docker compose ps` shows `eopis-app` in `running` state.
-- Check container logs: `docker compose logs eopis-app` to ensure the JVM has started with `-agentlib:jdwp=...`.
+Alternatively, override the host port mapping in `docker-compose.yml` (e.g. `"5433:5432"`).
 
-### Resetting the Database and Environment
-To completely wipe all data volumes and re-run Flyway migrations from scratch:
-```powershell
+### Remote Debugger Fails with "Connection Refused"
+
+1. Check that the container is running:
+   ```bash
+   docker compose ps eopis-app
+   ```
+2. Verify the JVM debug socket is listening inside the container logs:
+   ```bash
+   docker compose logs eopis-app | grep JDWP
+   ```
+   You should observe: `Listening for transport dt_socket at address: 5005`.
+
+### Complete Database Reset & Re-migration
+
+To purge all persistent data volumes and re-apply Flyway migrations from scratch:
+
+```bash
 docker compose down -v
 docker compose up -d
 ```

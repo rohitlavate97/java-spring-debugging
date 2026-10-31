@@ -41,3 +41,6 @@ logs/
 ### OS files ###
 .DS_Store
 Thumbs.db
+
+# Documentation Backups
+.docs_backup/
